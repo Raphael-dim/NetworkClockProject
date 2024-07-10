@@ -1,16 +1,14 @@
 import ctypes
-import sys
 import datetime
+import tkinter as tk
+from tkinter import messagebox
+from tkcalendar import DateEntry
+
+# Global variable for format
+current_format = "%Y-%m-%d %H:%M:%S"
 
 
-def set_system_time(new_time_str):
-    # Parse the new time string
-    try:
-        new_time = datetime.datetime.strptime(new_time_str, "%Y-%m-%d %H:%M:%S")
-    except ValueError as e:
-        print(f"Invalid time format: {e}")
-        return
-
+def set_system_time(new_time):
     # Define SYSTEMTIME structure
     class SYSTEMTIME(ctypes.Structure):
         _fields_ = [
@@ -37,15 +35,131 @@ def set_system_time(new_time_str):
 
     # Set system time using Windows API
     if not ctypes.windll.kernel32.SetSystemTime(ctypes.byref(system_time)):
-        print("Failed to set system time")
+        messagebox.showerror("Error", "Failed to set system time")
     else:
-        print("System time successfully set")
+        messagebox.showinfo("Success", "System time successfully set")
+        update_label_time()  # Update displayed time in the main application
+
+
+root = tk.Tk()
+time_label = tk.Label(root, text="", font=("Courier", 24), fg="white", bg="black")
+
+
+def update_label_time():
+    current_time = datetime.datetime.now().strftime(current_format)
+    time_label.config(text=current_time)
+
+
+def create_gui():
+
+    def edit_date_time():
+        selected_date = cal.get_date()
+        selected_time = datetime.time(
+            int(hour_var.get()), int(minute_var.get()), int(second_var.get())
+        )
+        new_time = datetime.datetime.combine(selected_date, selected_time)
+        set_system_time(new_time)
+
+    def update_format():
+        global current_format
+        new_format = format_entry.get()
+        try:
+            datetime.datetime.now().strftime(new_format)  # Check if format is valid
+            current_format = new_format
+            update_label_time()
+        except ValueError:
+            messagebox.showerror("Error", "Invalid format specified")
+
+    root.title("Set System Time")
+    root.configure(background="black")
+    root.geometry("500x450")  # Adjust main window size
+
+    time_label.pack(pady=20)
+
+    edit_format_frame = tk.Frame(
+        root,
+        bg="black",
+        bd=0,
+        relief=tk.SOLID,
+        highlightbackground="white",
+        highlightthickness=2,
+    )  # Edit frame
+
+    edit_format_frame.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
+
+    # New widgets for format editing
+    edit_format_label = tk.Label(
+        edit_format_frame, text="Edit Format", font=("Arial", 14), fg="white", bg="black"
+    )
+    edit_format_label.pack(pady=10)
+    format_entry = tk.Entry(edit_format_frame, width=50)
+    format_entry.pack(pady=10)
+    format_entry.insert(0, "%Y-%m-%d %H:%M:%S")  # Default format
+
+    format_button = tk.Button(edit_format_frame, text="Update Format", command=update_format)
+    format_button.pack(pady=10)
+
+    edit_frame = tk.Frame(
+        root,
+        bg="black",
+        bd=0,
+        relief=tk.SOLID,
+        highlightbackground="white",
+        highlightthickness=2,
+    )  # Edit frame
+
+    edit_frame.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
+
+    edit_label = tk.Label(
+        edit_frame, text="Edit Date/Time", font=("Arial", 14), fg="white", bg="black"
+    )
+    edit_label.pack(pady=10)
+
+    cal = DateEntry(
+        edit_frame, width=12, background="white", foreground="black", borderwidth=2
+    )
+    cal.pack(padx=10, pady=10)
+
+    time_frame = tk.Frame(edit_frame, bg="black")
+    time_frame.pack(padx=10, pady=10)
+
+    hour_var = tk.StringVar(value=datetime.datetime.now().hour)
+    minute_var = tk.StringVar(value=datetime.datetime.now().minute)
+    second_var = tk.StringVar(value=datetime.datetime.now().second)
+
+    hour_label = tk.Label(time_frame, text="Hour:", fg="white", bg="black")
+    hour_label.grid(row=0, column=0, padx=5, pady=5)
+    hour_entry = tk.Spinbox(time_frame, from_=0, to=23, textvariable=hour_var, width=5)
+    hour_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    minute_label = tk.Label(time_frame, text="Minute:", fg="white", bg="black")
+    minute_label.grid(row=0, column=2, padx=5, pady=5)
+    minute_entry = tk.Spinbox(
+        time_frame, from_=0, to=59, textvariable=minute_var, width=5
+    )
+    minute_entry.grid(row=0, column=3, padx=5, pady=5)
+
+    second_label = tk.Label(time_frame, text="Second:", fg="white", bg="black")
+    second_label.grid(row=0, column=4, padx=5, pady=5)
+    second_entry = tk.Spinbox(
+        time_frame, from_=0, to=59, textvariable=second_var, width=5
+    )
+    second_entry.grid(row=0, column=5, padx=5, pady=5)
+
+    validate_button = tk.Button(edit_frame, text="Validate", command=edit_date_time)
+    validate_button.pack(pady=10)
+
+    update_label_time()  # Update displayed time on application start
+
+    def update_time():
+        update_label_time()
+        root.after(1000, update_time)
+
+    update_time()
+
+    root.mainloop()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: time_setup.py 'YYYY-MM-DD HH:MM:SS'")
-        sys.exit(1)
-
-    new_time_str = sys.argv[1]
-    set_system_time(new_time_str)
+    # Open GUI window
+    create_gui()

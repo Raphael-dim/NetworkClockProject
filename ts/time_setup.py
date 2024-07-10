@@ -4,8 +4,11 @@ import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import DateEntry
 
-# Global variable for format
-current_format = "%Y-%m-%d %H:%M:%S"
+# Default format
+default_format = "%Y-%m-%d %H:%M:%S"
+
+# Global variable for current format
+current_format = default_format
 
 
 def set_system_time(new_time):
@@ -70,9 +73,16 @@ def create_gui():
         except ValueError:
             messagebox.showerror("Error", "Invalid format specified")
 
+    def reset_format():
+        global current_format
+        current_format = default_format
+        format_entry.delete(0, tk.END)  # Clear the entry
+        format_entry.insert(0, default_format)  # Insert default format
+        update_label_time()
+
     root.title("Set System Time")
     root.configure(background="black")
-    root.geometry("500x450")  # Adjust main window size
+    root.geometry("500x500")  # Adjust main window size
 
     time_label.pack(pady=20)
 
@@ -89,15 +99,23 @@ def create_gui():
 
     # New widgets for format editing
     edit_format_label = tk.Label(
-        edit_format_frame, text="Edit Format", font=("Arial", 14), fg="white", bg="black"
+        edit_format_frame,
+        text="Edit Format",
+        font=("Arial", 14),
+        fg="white",
+        bg="black",
     )
     edit_format_label.pack(pady=10)
     format_entry = tk.Entry(edit_format_frame, width=50)
     format_entry.pack(pady=10)
-    format_entry.insert(0, "%Y-%m-%d %H:%M:%S")  # Default format
+    format_entry.insert(0, default_format)  # Default format
 
-    format_button = tk.Button(edit_format_frame, text="Update Format", command=update_format)
-    format_button.pack(pady=10)
+    update_button = tk.Button(
+        edit_format_frame, text="Update Format", command=update_format
+    )
+    update_button.pack(pady=10)
+    reset_button = tk.Button(edit_format_frame, text="Reset", command=reset_format)
+    reset_button.pack(pady=10,  padx=10)
 
     edit_frame = tk.Frame(
         root,

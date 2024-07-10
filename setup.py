@@ -9,6 +9,7 @@ setup(
         # List dependencies here
         "flask",
         "pytest",
+        
     ],
     entry_points={
         "console_scripts": [

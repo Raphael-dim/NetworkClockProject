@@ -1,67 +1,56 @@
-import ctypes
 import datetime
 import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import DateEntry
+import subprocess
+import os
+import socket
+import threading
+from settings import get_port
+from clock import get_formatted_time
 
 # Default format
 default_format = "%Y-%m-%d %H:%M:%S"
-
 # Global variable for current format
 current_format = default_format
 
-
-def set_system_time(new_time):
-    # Define SYSTEMTIME structure
-    class SYSTEMTIME(ctypes.Structure):
-        _fields_ = [
-            ("wYear", ctypes.c_short),
-            ("wMonth", ctypes.c_short),
-            ("wDayOfWeek", ctypes.c_short),
-            ("wDay", ctypes.c_short),
-            ("wHour", ctypes.c_short),
-            ("wMinute", ctypes.c_short),
-            ("wSecond", ctypes.c_short),
-            ("wMilliseconds", ctypes.c_short),
-        ]
-
-    system_time = SYSTEMTIME(
-        wYear=new_time.year,
-        wMonth=new_time.month,
-        wDayOfWeek=new_time.weekday(),
-        wDay=new_time.day,
-        wHour=new_time.hour,
-        wMinute=new_time.minute,
-        wSecond=new_time.second,
-        wMilliseconds=int(new_time.microsecond / 1000),
-    )
-
-    # Set system time using Windows API
-    if not ctypes.windll.kernel32.SetSystemTime(ctypes.byref(system_time)):
-        messagebox.showerror("Error", "Failed to set system time")
-    else:
-        messagebox.showinfo("Success", "System time successfully set")
-        update_label_time()  # Update displayed time in the main application
-
-
 root = tk.Tk()
 time_label = tk.Label(root, text="", font=("Courier", 24), fg="white", bg="black")
-
 
 def update_label_time():
     current_time = datetime.datetime.now().strftime(current_format)
     time_label.config(text=current_time)
 
-
 def create_gui():
-
+    # Fonction appelée lors du clic sur le bouton "Valider"
     def edit_date_time():
         selected_date = cal.get_date()
         selected_time = datetime.time(
             int(hour_var.get()), int(minute_var.get()), int(second_var.get())
         )
         new_time = datetime.datetime.combine(selected_date, selected_time)
-        set_system_time(new_time)
+
+        print(new_time)
+        ts_script_path = os.path.join(os.path.dirname(__file__), "set_system_time.py")
+        print(ts_script_path)
+        if not os.path.isfile(ts_script_path):
+            raise FileNotFoundError(f"{ts_script_path} not found")
+
+        if os.name == "nt":
+            powershell_cmd = [
+                "powershell.exe",
+                "-Command",
+                f"Start-Process py -ArgumentList '{ts_script_path}', '{selected_date}', '{selected_time}' -Verb RunAs",
+            ]
+            subprocess.check_call(" ".join(powershell_cmd), shell=True)
+            update_label_time()
+        else:
+            # On Unix-like systems, use 'sudo' to execute the Python script
+            subprocess.check_call(
+                ["sudo", "python3", ts_script_path, date_str, time_str]
+            )
+
+        update_time()
 
     def update_format():
         global current_format
@@ -115,7 +104,7 @@ def create_gui():
     )
     update_button.pack(pady=10)
     reset_button = tk.Button(edit_format_frame, text="Reset", command=reset_format)
-    reset_button.pack(pady=10,  padx=10)
+    reset_button.pack(pady=10, padx=10)
 
     edit_frame = tk.Frame(
         root,
@@ -178,6 +167,38 @@ def create_gui():
     root.mainloop()
 
 
+def handle_client(client_socket):
+    try:
+        while True:
+            request = client_socket.recv(1024).decode("utf-8")
+            if not request:
+                break
+            formatted_time = get_formatted_time(request.strip())
+            client_socket.send(formatted_time.encode("utf-8"))
+    except Exception as e:
+        print(f"Error handling client: {e}")
+    finally:
+        client_socket.close()
+
+
+def start_server():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    port = get_port()
+    server.bind(("0.0.0.0", port))
+    server.listen(5)
+    print(f"[*] Listening on port {port}")
+
+    while True:
+        client_socket, addr = server.accept()
+        print(f"[*] Accepted connection from {addr[0]}:{addr[1]}")
+        client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+        client_handler.start()
+
 if __name__ == "__main__":
-    # Open GUI window
-    create_gui()
+    # Start server on another thread
+    server_thread = threading.Thread(target=start_server)
+    server_thread.start()
+
+    # Open GUI window on a thread
+    gui_thread = threading.Thread(target=create_gui)
+    gui_thread.start()

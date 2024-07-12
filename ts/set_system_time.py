@@ -1,6 +1,7 @@
 import os
 import sys
 import datetime
+import ctypes
 
 date_str = sys.argv[1]
 time_str = sys.argv[2]
@@ -11,8 +12,7 @@ except ValueError as e:
     print(f"Invalid time format: {e}")
     sys.exit(1)
 
-if os.name == "nt":  # Windows
-    import ctypes
+if os.name == "nt":
 
     SYSTEMTIME = ctypes.c_uint16 * 8
     st = SYSTEMTIME(

@@ -8,7 +8,6 @@ import socket
 import threading
 import signal
 from settings import get_port
-from clock import get_formatted_time
 
 # Default format in user-friendly form
 default_format = "YYYY-MM-dd HH:mm:ss"

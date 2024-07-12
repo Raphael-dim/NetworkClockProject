@@ -10,9 +10,7 @@ NetworkClockProject/<br>
 │<br>
 ├── ts/<br>
 │ ├── set_system_time.py<br>
-│ ├── time_setup.py<br>
-│ ├── clock.py<br>
-│ ├── settings.py<br>
+│ ├── server.py<br>
 │<br>
 ├── config/<br>
 │ ├── port.txt<br>

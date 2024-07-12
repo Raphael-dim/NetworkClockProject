@@ -200,10 +200,10 @@ def handle_client(client_socket):
         print(f"Error handling client: {e}")
 
 
-def get_formatted_time(format_string="%Y-%m-%d %H:%M:%S"):
+def get_formatted_time(format_string="YYYY-mm-dd HH:MM:SS"):
     now = datetime.datetime.now()
     try:
-        return now.strftime(format_string)
+        return now.strftime(convert_to_strftime_format(format_string))
     except Exception as e:
         return f"Error formatting time: {e}"
 

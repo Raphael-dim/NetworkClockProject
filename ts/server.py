@@ -92,6 +92,9 @@ def create_gui():
 
     time_label.pack(pady=20)
 
+    time_update_button = tk.Button(root, text="Update Time", command=update_label_time)
+    time_update_button.pack(pady=10)
+
     edit_format_frame = tk.Frame(
         root,
         bg="black",
@@ -237,7 +240,6 @@ def get_port():
                 if "tcp_port =" in line:
                     portConfig = int(line.split("=")[1].strip())
                     break
-
 
     config_path = os.path.join(
         os.getenv("USERPROFILE"), "AppData", "Local", "Clock", "port.txt"

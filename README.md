@@ -35,12 +35,4 @@ NetworkClockProject/<br>
 Configure the TCP port by editing the config/port.txt file.
 
 - Start the server:
-python run.py
-
-- Setting the System Time
-The time setting application requires administrative privileges. <br>
-To set the system time, run: python ts/time_setup.py "YYYY-MM-DD HH:MM:SS"
-
-- Testing
-To run the tests, use the following command:
-python -m unittest discover tests
+python server.py

@@ -48,9 +48,7 @@ def create_gui():
         )
         new_time = datetime.datetime.combine(selected_date, selected_time)
 
-        print(new_time)
         ts_script_path = os.path.join(os.path.dirname(__file__), "set_system_time.py")
-        print(ts_script_path)
         if not os.path.isfile(ts_script_path):
             raise FileNotFoundError(f"{ts_script_path} not found")
 
@@ -231,31 +229,35 @@ def start_server(stop_event):
 def get_port():
     # on récupére le port dans le fichier config/port.txt
     # on utilise le délimiteur tcp_port = pour récupérer la valeur
-    port = 8080
-    portTxtFile = os.path.join(os.path.dirname(__file__), "config", "port.txt")
+    portConfig = 8080
+    portTxtFile = os.path.join(os.path.dirname(__file__), "../config", "port.txt")
     if os.path.exists(portTxtFile):
         with open(portTxtFile, "r") as file:
             for line in file:
                 if "tcp_port =" in line:
-                    port = int(line.split("=")[1].strip())
+                    portConfig = int(line.split("=")[1].strip())
                     break
+
 
     config_path = os.path.join(
         os.getenv("USERPROFILE"), "AppData", "Local", "Clock", "port.txt"
     )
+
     # si le fichier n'est pas trouvé, on créer le dossier et le fichier
     if not os.path.exists(os.path.dirname(config_path)):
         os.makedirs(os.path.dirname(config_path))
         with open(config_path, "w") as file:
-            file.write(str(port))
+            file.write(str(portConfig))
 
-    try:
+    # si le fichier est trouvé, on li le port et on compare avec le port de config, si différent on met à jour
+    if os.path.exists(config_path):
         with open(config_path, "r") as file:
-            port = int(file.read().strip())
-            return port
-    except Exception as e:
-        print(f"Error reading port configuration: {e}")
-        return 8080  # Default port
+            port = int(file.read())
+            if port != portConfig:
+                with open(config_path, "w") as file:
+                    file.write(str(portConfig))
+            return portConfig
+    return portConfig
 
 
 def signal_handler(sig, frame):

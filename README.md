@@ -8,33 +8,14 @@ This project is a Network Clock (NC) application that displays the current date 
 
 NetworkClockProject/<br>
 │<br>
-├── nc/<br>
-│ ├── init.py<br>
-│ ├── server.py<br>
+├── ts/<br>
+│ ├── set_system_time.py<br>
+│ ├── time_setup.py<br>
 │ ├── clock.py<br>
 │ ├── settings.py<br>
-│ ├── privileges.py<br>
-│ ├── utils.py<br>
-│<br>
-├── ts/<br>
-│ ├── init.py<br>
-│ ├── time_setup.py<br>
-│ ├── manifest.xml<br>
-│<br>
-├── tests/<br>
-│ ├── init.py<br>
-│ ├── test_server.py<br>
-│ ├── test_clock.py<br>
-│ ├── test_privileges.py<br>
-│ ├── test_utils.py<br>
-│<br>
-├── config/<br>
-│ ├── port.txt<br>
 │<br>
 ├── README.md<br>
-├── requirements.txt<br>
-├── setup.py<br>
-└── run.py<br>
+└── client.py<br>
 
 ## Setup and Installation
 

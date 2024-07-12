@@ -6,23 +6,43 @@ import subprocess
 import os
 import socket
 import threading
+import signal
 from settings import get_port
 from clock import get_formatted_time
 
-# Default format
-default_format = "%Y-%m-%d %H:%M:%S"
+# Default format in user-friendly form
+default_format = "YYYY-MM-dd HH:mm:ss"
 # Global variable for current format
 current_format = default_format
+
+# Mapping for user-friendly format to strftime-compatible format
+format_mapping = {
+    "YYYY": "%Y",
+    "MM": "%m",
+    "dd": "%d",
+    "HH": "%H",
+    "mm": "%M",
+    "ss": "%S",
+}
 
 root = tk.Tk()
 time_label = tk.Label(root, text="", font=("Courier", 24), fg="white", bg="black")
 
+
+def convert_to_strftime_format(user_format):
+    for key, value in format_mapping.items():
+        user_format = user_format.replace(key, value)
+    return user_format
+
+
 def update_label_time():
-    current_time = datetime.datetime.now().strftime(current_format)
+    current_time = datetime.datetime.now().strftime(
+        convert_to_strftime_format(current_format)
+    )
     time_label.config(text=current_time)
 
+
 def create_gui():
-    # Fonction appelée lors du clic sur le bouton "Valider"
     def edit_date_time():
         selected_date = cal.get_date()
         selected_time = datetime.time(
@@ -36,27 +56,28 @@ def create_gui():
         if not os.path.isfile(ts_script_path):
             raise FileNotFoundError(f"{ts_script_path} not found")
 
+        date_str = new_time.strftime("%Y-%m-%d")
+        time_str = new_time.strftime("%H:%M:%S")
+
         if os.name == "nt":
             powershell_cmd = [
                 "powershell.exe",
                 "-Command",
-                f"Start-Process py -ArgumentList '{ts_script_path}', '{selected_date}', '{selected_time}' -Verb RunAs",
+                f"Start-Process py -ArgumentList '{ts_script_path}', '{date_str}', '{time_str}' -Verb RunAs",
             ]
             subprocess.check_call(" ".join(powershell_cmd), shell=True)
-            update_label_time()
         else:
-            # On Unix-like systems, use 'sudo' to execute the Python script
             subprocess.check_call(
                 ["sudo", "python3", ts_script_path, date_str, time_str]
             )
 
-        update_time()
+        update_label_time()
 
     def update_format():
         global current_format
         new_format = format_entry.get()
         try:
-            datetime.datetime.now().strftime(new_format)  # Check if format is valid
+            datetime.datetime.now().strftime(convert_to_strftime_format(new_format))
             current_format = new_format
             update_label_time()
         except ValueError:
@@ -65,13 +86,13 @@ def create_gui():
     def reset_format():
         global current_format
         current_format = default_format
-        format_entry.delete(0, tk.END)  # Clear the entry
-        format_entry.insert(0, default_format)  # Insert default format
+        format_entry.delete(0, tk.END)
+        format_entry.insert(0, default_format)
         update_label_time()
 
     root.title("Set System Time")
     root.configure(background="black")
-    root.geometry("500x500")  # Adjust main window size
+    root.geometry("500x500")
 
     time_label.pack(pady=20)
 
@@ -82,11 +103,10 @@ def create_gui():
         relief=tk.SOLID,
         highlightbackground="white",
         highlightthickness=2,
-    )  # Edit frame
+    )
 
     edit_format_frame.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
 
-    # New widgets for format editing
     edit_format_label = tk.Label(
         edit_format_frame,
         text="Edit Format",
@@ -97,7 +117,7 @@ def create_gui():
     edit_format_label.pack(pady=10)
     format_entry = tk.Entry(edit_format_frame, width=50)
     format_entry.pack(pady=10)
-    format_entry.insert(0, default_format)  # Default format
+    format_entry.insert(0, default_format)
 
     update_button = tk.Button(
         edit_format_frame, text="Update Format", command=update_format
@@ -113,7 +133,7 @@ def create_gui():
         relief=tk.SOLID,
         highlightbackground="white",
         highlightthickness=2,
-    )  # Edit frame
+    )
 
     edit_frame.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
 
@@ -156,7 +176,7 @@ def create_gui():
     validate_button = tk.Button(edit_frame, text="Validate", command=edit_date_time)
     validate_button.pack(pady=10)
 
-    update_label_time()  # Update displayed time on application start
+    update_label_time()
 
     def update_time():
         update_label_time()
@@ -173,32 +193,57 @@ def handle_client(client_socket):
             request = client_socket.recv(1024).decode("utf-8")
             if not request:
                 break
+            if request.strip().lower() == "exit":
+                break
             formatted_time = get_formatted_time(request.strip())
             client_socket.send(formatted_time.encode("utf-8"))
     except Exception as e:
         print(f"Error handling client: {e}")
-    finally:
-        client_socket.close()
 
 
-def start_server():
+def get_formatted_time(format_string="%Y-%m-%d %H:%M:%S"):
+    now = datetime.datetime.now()
+    try:
+        return now.strftime(format_string)
+    except Exception as e:
+        return f"Error formatting time: {e}"
+
+
+def start_server(stop_event):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     port = get_port()
     server.bind(("0.0.0.0", port))
     server.listen(5)
     print(f"[*] Listening on port {port}")
 
-    while True:
-        client_socket, addr = server.accept()
-        print(f"[*] Accepted connection from {addr[0]}:{addr[1]}")
-        client_handler = threading.Thread(target=handle_client, args=(client_socket,))
-        client_handler.start()
+    server.settimeout(1.0)  # Set a timeout for accepting connections
+    while not stop_event.is_set():
+        try:
+            client_socket, addr = server.accept()
+            print(f"[*] Accepted connection from {addr[0]}:{addr[1]}")
+            client_handler = threading.Thread(
+                target=handle_client, args=(client_socket,)
+            )
+            client_handler.start()
+        except socket.timeout:
+            continue
+    server.close()
+
+
+def signal_handler(sig, frame):
+    print("Exiting...")
+    stop_event.set()
+    root.quit()  # Stop the GUI loop
+
 
 if __name__ == "__main__":
-    # Start server on another thread
-    server_thread = threading.Thread(target=start_server)
+    stop_event = threading.Event()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    server_thread = threading.Thread(target=start_server, args=(stop_event,))
     server_thread.start()
 
-    # Open GUI window on a thread
-    gui_thread = threading.Thread(target=create_gui)
-    gui_thread.start()
+    create_gui()
+
+    server_thread.join()

@@ -14,6 +14,9 @@ NetworkClockProject/<br>
 │ ├── clock.py<br>
 │ ├── settings.py<br>
 │<br>
+├── config/<br>
+│ ├── port.txt<br>
+│<br>
 ├── README.md<br>
 └── client.py<br>
 

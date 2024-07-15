@@ -18,17 +18,6 @@ NetworkClockProject/<br>
 ├── README.md<br>
 └── client.py<br>
 
-## Setup and Installation
-
-1. Clone the repository:<br>
-   git clone https://github.com/yourusername/NetworkClockProject.git
-
-2. Navigate to the project directory:<br>
-    cd NetworkClockProject
-
-3. Install the required dependencies:<br>
-    pip install -r requirements.txt
-
 ## Usage
 
 - Running the Network Clock Server
@@ -36,3 +25,7 @@ Configure the TCP port by editing the config/port.txt file.
 
 - Start the server:
 python server.py
+
+- Run the client:
+python client.py <server_host> <server_port>
+Exemple : python client.py localhost 8090 

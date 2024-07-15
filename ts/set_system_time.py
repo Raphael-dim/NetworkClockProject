@@ -9,7 +9,6 @@ time_str = sys.argv[2]
 try:
     new_time = datetime.datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
 except ValueError as e:
-    print(f"Invalid time format: {e}")
     sys.exit(1)
 
 if os.name == "nt":

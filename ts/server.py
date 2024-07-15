@@ -1,3 +1,4 @@
+import ctypes
 import datetime
 import tkinter as tk
 from tkinter import messagebox
@@ -54,7 +55,7 @@ def create_gui():
         if not second_var.get().isdigit() or not 0 <= int(second_var.get()) <= 59:
             messagebox.showerror("Error", "Invalid second specified")
             return
-        
+
         selected_time = datetime.time(
             int(hour_var.get()), int(minute_var.get()), int(second_var.get())
         )
@@ -68,12 +69,16 @@ def create_gui():
         time_str = new_time.strftime("%H:%M:%S")
 
         if os.name == "nt":
-            powershell_cmd = [
-                "powershell.exe",
-                "-Command",
-                f"Start-Process py -ArgumentList '{ts_script_path}', '{date_str}', '{time_str}' -Verb RunAs",
-            ]
-            subprocess.check_call(" ".join(powershell_cmd), shell=True)
+            shell_cmd = f"python {ts_script_path} {date_str} {time_str}"
+            params = f'/c "{shell_cmd}"'
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", "cmd.exe", params, None, 1
+            )
+            if result <= 32:
+                raise RuntimeError(
+                    f"Failed to execute the command with elevation, error code: {result}"
+                )
+
         else:
             subprocess.check_call(
                 ["sudo", "python3", ts_script_path, date_str, time_str]
@@ -199,17 +204,19 @@ def create_gui():
 
 
 def handle_client(client_socket):
-    try:
-        while True:
-            request = client_socket.recv(1024).decode("utf-8")
-            if not request:
-                break
+    buffer = ""
+    while True:
+        data = client_socket.recv(1024).decode("utf-8")
+        if not data:
+            break
+        buffer += data
+        while "\n" in buffer:
+            request, buffer = buffer.split("\n", 1)
             if request.strip().lower() == "exit":
-                break
+                client_socket.close()
+                return
             formatted_time = get_formatted_time(request.strip())
-            client_socket.send(formatted_time.encode("utf-8"))
-    except Exception as e:
-        print(f"Error handling client: {e}")
+            client_socket.sendall((formatted_time + "\n").encode("utf-8"))
 
 
 def get_formatted_time(format_string="YYYY-mm-dd HH:MM:SS"):
@@ -275,7 +282,6 @@ def get_port():
 
 
 def signal_handler(sig, frame):
-    print("Exiting...")
     stop_event.set()
     root.quit()  # Stop the GUI loop
 

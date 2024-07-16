@@ -30,23 +30,45 @@ time_label = tk.Label(root, text="", font=("Courier", 24), fg="white", bg="black
 
 
 def convert_to_strftime_format(user_format):
+    """Convert user-friendly date/time format to strftime-compatible format."""
     for key, value in format_mapping.items():
         user_format = user_format.replace(key, value)
     return user_format
 
 
 def update_label_time():
+    """Update the time displayed on the label."""
     current_time = datetime.datetime.now().strftime(
         convert_to_strftime_format(current_format)
     )
     time_label.config(text=current_time)
 
 
+def drop_privileges():
+    """Drop unnecessary privileges."""
+    try:
+        # On UNIX-like systems, drop root privileges if we have them
+        if os.name != "nt" and os.getuid() == 0:
+            os.setuid(os.geteuid())
+    except Exception as e:
+        print(f"Error dropping privileges: {e}")
+
+
+def subscribe_to_dep():
+    """Subscribe to Data Execution Prevention (DEP)."""
+    try:
+        if os.name == "nt":
+            ctypes.windll.kernel32.SetProcessDEPPolicy(1)
+    except Exception as e:
+        print(f"Error subscribing to DEP: {e}")
+
+
 def create_gui():
     def edit_date_time():
+        """Set the system time based on user input."""
         selected_date = cal.get_date()
 
-        # Validate the hour (0-23), minute (0-59), and second (0-59), and not contain any other characters and not empty
+        # Validate the hour (0-23), minute (0-59), and second (0-59)
         if not hour_var.get().isdigit() or not 0 <= int(hour_var.get()) <= 23:
             messagebox.showerror("Error", "Invalid hour specified")
             return
@@ -81,7 +103,6 @@ def create_gui():
                     1,
                 ),
             ).start()
-
         else:
             subprocess.check_call(
                 ["sudo", "python3", ts_script_path, date_str, time_str]
@@ -90,6 +111,7 @@ def create_gui():
         update_label_time()
 
     def update_format():
+        """Update the format used to display the time."""
         global current_format
         new_format = format_entry.get()
         try:
@@ -100,6 +122,7 @@ def create_gui():
             messagebox.showerror("Error", "Invalid format specified")
 
     def reset_format():
+        """Reset the format to the default."""
         global current_format
         current_format = default_format
         format_entry.delete(0, tk.END)
@@ -207,6 +230,7 @@ def create_gui():
 
 
 def handle_client(client_socket):
+    """Handle incoming client connections."""
     buffer = ""
     while True:
         data = client_socket.recv(1024).decode("utf-8")
@@ -223,80 +247,32 @@ def handle_client(client_socket):
 
 
 def get_formatted_time(format_string="YYYY-mm-dd HH:MM:SS"):
-    now = datetime.datetime.now()
-    try:
-        return now.strftime(convert_to_strftime_format(format_string))
-    except Exception as e:
-        return f"Error formatting time: {e}"
+    """Get the current time formatted according to the specified format string."""
+    return datetime.datetime.now().strftime(convert_to_strftime_format(format_string))
 
 
-def start_server(stop_event):
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    port = get_port()
-    server.bind(("0.0.0.0", port))
-    server.listen(5)
-    print(f"[*] Listening on port {port}")
-
-    server.settimeout(1.0)  # Set a timeout for accepting connections
-    while not stop_event.is_set():
-        try:
-            client_socket, addr = server.accept()
-            print(f"[*] Accepted connection from {addr[0]}:{addr[1]}")
-            client_handler = threading.Thread(
-                target=handle_client, args=(client_socket,)
-            )
-            client_handler.start()
-        except socket.timeout:
-            continue
-    server.close()
+def start_tcp_server():
+    """Start the TCP server to handle client requests."""
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(("0.0.0.0", 12345))
+    server_socket.listen(5)
+    while True:
+        client_socket, addr = server_socket.accept()
+        client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+        client_handler.start()
 
 
-def get_port():
-    # on récupére le port dans le fichier config/port.txt
-    # on utilise le délimiteur tcp_port = pour récupérer la valeur
-    portConfig = 8080
-    portTxtFile = os.path.join(os.path.dirname(__file__), "../config", "port.txt")
-    if os.path.exists(portTxtFile):
-        with open(portTxtFile, "r") as file:
-            for line in file:
-                if "tcp_port =" in line:
-                    portConfig = int(line.split("=")[1].strip())
-                    break
-
-    config_path = os.path.join(
-        os.getenv("USERPROFILE"), "AppData", "Local", "Clock", "port.txt"
-    )
-
-    # si le fichier n'est pas trouvé, on créer le dossier et le fichier
-    if not os.path.exists(os.path.dirname(config_path)):
-        os.makedirs(os.path.dirname(config_path))
-        with open(config_path, "w") as file:
-            file.write(str(portConfig))
-
-    # si le fichier est trouvé, on li le port et on compare avec le port de config, si différent on met à jour
-    if os.path.exists(config_path):
-        with open(config_path, "r") as file:
-            port = int(file.read())
-            if port != portConfig:
-                with open(config_path, "w") as file:
-                    file.write(str(portConfig))
-            return portConfig
-    return portConfig
-
-
-def signal_handler(sig, frame):
-    stop_event.set()
-    root.quit()  # Stop the GUI loop
+def handle_exit(signum, frame):
+    print("Exiting...")
+    root.quit()
 
 
 if __name__ == "__main__":
-    stop_event = threading.Event()
+    drop_privileges()
+    subscribe_to_dep()
 
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
 
-    server_thread = threading.Thread(target=start_server, args=(stop_event,))
-    server_thread.start()
-
+    threading.Thread(target=start_tcp_server, daemon=True).start()
     create_gui()
-
-    server_thread.join()

@@ -28,4 +28,4 @@ py server.py
 
 - Run the client:
 py client.py <server_host> <server_port>
-Exemple : py client.py localhost 8090 
+Exemple : py client.py localhost 12345 

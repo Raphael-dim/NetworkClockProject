@@ -253,6 +253,7 @@ def get_formatted_time(format_string="YYYY-mm-dd HH:MM:SS"):
 
 def start_tcp_server():
     """Start the TCP server to handle client requests."""
+    print("Starting TCP server...")
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(("0.0.0.0", 12345))
     server_socket.listen(5)

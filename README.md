@@ -24,8 +24,8 @@ NetworkClockProject/<br>
 Configure the TCP port by editing the config/port.txt file.
 
 - Start the server:
-python server.py
+py server.py
 
 - Run the client:
-python client.py <server_host> <server_port>
-Exemple : python client.py localhost 8090 
+py client.py <server_host> <server_port>
+Exemple : py client.py localhost 8090 

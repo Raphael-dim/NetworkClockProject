@@ -28,7 +28,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 3:
-        print("Usage: python client.py <server_host> <server_port>")
+        print("Usage: py client.py <server_host> <server_port>")
         sys.exit(1)
 
     server_host = sys.argv[1]

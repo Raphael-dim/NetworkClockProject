@@ -1,5 +1,6 @@
 import ctypes
 import datetime
+import sys
 import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import DateEntry
@@ -69,15 +70,17 @@ def create_gui():
         time_str = new_time.strftime("%H:%M:%S")
 
         if os.name == "nt":
-            shell_cmd = f"python {ts_script_path} {date_str} {time_str}"
-            params = f'/c "{shell_cmd}"'
-            result = ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", "cmd.exe", params, None, 1
-            )
-            if result <= 32:
-                raise RuntimeError(
-                    f"Failed to execute the command with elevation, error code: {result}"
-                )
+            threading.Thread(
+                target=ctypes.windll.shell32.ShellExecuteW,
+                args=(
+                    None,
+                    "runas",
+                    sys.executable,
+                    f"{ts_script_path} {date_str} {time_str}",
+                    None,
+                    1,
+                ),
+            ).start()
 
         else:
             subprocess.check_call(

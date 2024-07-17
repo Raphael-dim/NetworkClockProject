@@ -3,6 +3,19 @@ import sys
 import datetime
 import ctypes
 
+
+def subscribe_to_dep():
+    """Subscribe to Data Execution Prevention (DEP)."""
+    try:
+        if os.name == "nt":
+            ctypes.windll.kernel32.SetProcessDEPPolicy(1)
+    except Exception as e:
+        print(f"Error subscribing to DEP: {e}")
+
+
+# Subscribe to DEP
+subscribe_to_dep()
+
 date_str = sys.argv[1]
 time_str = sys.argv[2]
 
@@ -12,7 +25,6 @@ except ValueError as e:
     sys.exit(1)
 
 if os.name == "nt":
-
     SYSTEMTIME = ctypes.c_uint16 * 8
     st = SYSTEMTIME(
         new_time.year,

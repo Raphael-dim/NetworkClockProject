@@ -30,7 +30,26 @@ time_label = tk.Label(root, text="", font=("Courier", 24), fg="white", bg="black
 
 
 def convert_to_strftime_format(user_format):
-    """Convert user-friendly date/time format to strftime-compatible format."""
+    """Converts a user-friendly date/time format to strftime-compatible format.
+
+    Args:
+        user_format (str): User-provided date/time format using custom tokens (e.g., YYYY, MM, dd).
+
+    Returns:
+        str: A date/time format string converted to strftime-compatible format.
+
+    This function translates a user-specified format into a format compatible with strftime,
+    which is a standard way to format date/time in Python. It uses a predefined mapping
+    (format_mapping) to replace custom tokens with their respective strftime equivalents.
+
+    For example, if the user provides 'YYYY-MM-dd HH:mm:ss', this function converts it to '%Y-%m-%d %H:%M:%S',
+    which strftime understands and can use to format the current date and time accordingly.
+
+    Note: Using strftime is generally safe for formatting purposes. However, if the user is allowed
+    to input arbitrary format strings and those strings are used elsewhere (e.g., in a database query),
+    additional validation and sanitization might be needed to prevent SQL injection or other security risks.
+    """
+
     for key, value in format_mapping.items():
         user_format = user_format.replace(key, value)
     return user_format
@@ -255,12 +274,46 @@ def start_tcp_server():
     """Start the TCP server to handle client requests."""
     print("Starting TCP server...")
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(("0.0.0.0", 12345))
+    port = get_port()
+    server_socket.bind(("0.0.0.0", port))
     server_socket.listen(5)
     while True:
         client_socket, addr = server_socket.accept()
         client_handler = threading.Thread(target=handle_client, args=(client_socket,))
         client_handler.start()
+
+
+def get_port():
+    # on récupére le port dans le fichier config/port.txt
+    # on utilise le délimiteur tcp_port = pour récupérer la valeur
+    portConfig = 8080
+    portTxtFile = os.path.join(os.path.dirname(__file__), "../config", "port.txt")
+    if os.path.exists(portTxtFile):
+        with open(portTxtFile, "r") as file:
+            for line in file:
+                if "tcp_port =" in line:
+                    portConfig = int(line.split("=")[1].strip())
+                    break
+
+    config_path = os.path.join(
+        os.getenv("USERPROFILE"), "AppData", "Local", "Clock", "port.txt"
+    )
+
+    # si le fichier n'est pas trouvé, on créer le dossier et le fichier
+    if not os.path.exists(os.path.dirname(config_path)):
+        os.makedirs(os.path.dirname(config_path))
+        with open(config_path, "w") as file:
+            file.write(str(portConfig))
+
+    # si le fichier est trouvé, on li le port et on compare avec le port de config, si différent on met à jour
+    if os.path.exists(config_path):
+        with open(config_path, "r") as file:
+            port = int(file.read())
+            if port != portConfig:
+                with open(config_path, "w") as file:
+                    file.write(str(portConfig))
+            return portConfig
+    return portConfig
 
 
 def handle_exit(signum, frame):

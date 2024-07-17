@@ -64,11 +64,16 @@ def update_label_time():
 
 
 def drop_privileges():
-    """Drop unnecessary privileges."""
+    """Drop unnecessary privileges on Windows."""
     try:
-        # On UNIX-like systems, drop root privileges if we have them
-        if os.name != "nt" and os.getuid() == 0:
-            os.setuid(os.geteuid())
+        # Adjusting token privileges to drop unnecessary privileges
+        # Only necessary if your script started with elevated privileges
+        if ctypes.windll.shell32.IsUserAnAdmin() != 0:
+            # Check if running with elevated privileges
+            ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", sys.executable, " ".join(sys.argv), None, 1
+            )
+            sys.exit(0)
     except Exception as e:
         print(f"Error dropping privileges: {e}")
 

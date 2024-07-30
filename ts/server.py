@@ -9,6 +9,8 @@ import os
 import socket
 import threading
 import signal
+import win32api
+import win32security
 
 # Default format in user-friendly form
 default_format = "YYYY-MM-dd HH:mm:ss"
@@ -64,18 +66,29 @@ def update_label_time():
 
 
 def drop_privileges():
-    """Drop unnecessary privileges on Windows."""
-    try:
-        # Adjusting token privileges to drop unnecessary privileges
-        # Only necessary if your script started with elevated privileges
-        if ctypes.windll.shell32.IsUserAnAdmin() != 0:
-            # Check if running with elevated privileges
-            ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", sys.executable, " ".join(sys.argv), None, 1
-            )
-            sys.exit(0)
+    try:  # on drop les privilèges pour éviter les attaques de type privilege escalation
+        token = win32security.OpenProcessToken(
+            win32api.GetCurrentProcess(),
+            win32security.TOKEN_ADJUST_PRIVILEGES | win32security.TOKEN_QUERY,
+        )
+        win32security.AdjustTokenPrivileges(
+            token,
+            False,
+            [
+                (privilege, win32security.SE_PRIVILEGE_REMOVED)
+                for privilege in [
+                    win32security.LookupPrivilegeValue(None, privilege)
+                    for privilege in [
+                        win32security.LookupPrivilegeName(None, privilege[0])
+                        for privilege in win32security.GetTokenInformation(
+                            token, win32security.TokenPrivileges
+                        )
+                    ]
+                ]
+            ],
+        )
     except Exception as e:
-        print(f"Error dropping privileges: {e}")
+        print(f"Erreur pendant le drop de privilièges: {e}")
 
 
 def subscribe_to_dep():
@@ -279,7 +292,12 @@ def start_tcp_server():
     """Start the TCP server to handle client requests."""
     print("Starting TCP server...")
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    port = get_port()
+    port = get_port() 
+    # on vérifie que le port est bien un entier
+    if not isinstance(port, int):
+        print("Invalid port specified")
+        return
+
     server_socket.bind(("0.0.0.0", port))
     server_socket.listen(5)
     while True:
@@ -327,8 +345,8 @@ def handle_exit(signum, frame):
 
 
 if __name__ == "__main__":
-    drop_privileges()
     subscribe_to_dep()
+    drop_privileges()
 
     signal.signal(signal.SIGINT, handle_exit)
     signal.signal(signal.SIGTERM, handle_exit)

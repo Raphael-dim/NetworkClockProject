@@ -43,6 +43,18 @@ def update_label_time():
 def create_gui():
     def edit_date_time():
         selected_date = cal.get_date()
+
+        # Validate the hour (0-23), minute (0-59), and second (0-59), and not contain any other characters and not empty
+        if not hour_var.get().isdigit() or not 0 <= int(hour_var.get()) <= 23:
+            messagebox.showerror("Error", "Invalid hour specified")
+            return
+        if not minute_var.get().isdigit() or not 0 <= int(minute_var.get()) <= 59:
+            messagebox.showerror("Error", "Invalid minute specified")
+            return
+        if not second_var.get().isdigit() or not 0 <= int(second_var.get()) <= 59:
+            messagebox.showerror("Error", "Invalid second specified")
+            return
+        
         selected_time = datetime.time(
             int(hour_var.get()), int(minute_var.get()), int(second_var.get())
         )
@@ -88,7 +100,7 @@ def create_gui():
 
     root.title("Set System Time")
     root.configure(background="black")
-    root.geometry("500x500")
+    root.geometry("500x550")
 
     time_label.pack(pady=20)
 
